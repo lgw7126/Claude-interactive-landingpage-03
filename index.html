@@ -16,7 +16,10 @@
   --ink:#2B2822;          /* 먹 */
   --ink-soft:#5A5346;
   --tile:#33302A;         /* 기와 */
+  --tile-hi:#454138;
+  --tile-lo:#242119;
   --tile-line:#4A463D;
+  --wood:#7A5A3F;         /* 서까래 */
   --red:#9C4A32;          /* 석간주 */
   --green:#5C7160;        /* 뇌록 */
   --moon:#F6EFDC;
@@ -28,32 +31,25 @@
 }
 @media (prefers-color-scheme: dark){
   :root{
-    --paper:#191813;
-    --paper-deep:#14130F;
-    --ink:#DCD3BD;
-    --ink-soft:#9A9077;
-    --tile:#26241F;
-    --tile-line:#3B382F;
-    --red:#B86A50;
-    --green:#7C927F;
-    --moon:#EFE5C8;
-    --glyph:#CFC5AA;
-    --glyph-alpha:0.85;
-    --shadow-alpha:0.16;
-    --card:#201E18;
-    --hairline:rgba(220,211,189,.25);
+    --paper:#191813; --paper-deep:#14130F; --ink:#DCD3BD; --ink-soft:#9A9077;
+    --tile:#26241F; --tile-hi:#37342B; --tile-lo:#1B1915; --tile-line:#3B382F;
+    --wood:#6B4E37; --red:#B86A50; --green:#7C927F; --moon:#EFE5C8;
+    --glyph:#CFC5AA; --glyph-alpha:0.85; --shadow-alpha:0.16;
+    --card:#201E18; --hairline:rgba(220,211,189,.25);
   }
 }
 :root[data-theme="light"]{
   --paper:#EAE4D2; --paper-deep:#E0D8C2; --ink:#2B2822; --ink-soft:#5A5346;
-  --tile:#33302A; --tile-line:#4A463D; --red:#9C4A32; --green:#5C7160;
-  --moon:#F6EFDC; --glyph:#3A342A; --glyph-alpha:0.88; --shadow-alpha:0.09;
+  --tile:#33302A; --tile-hi:#454138; --tile-lo:#242119; --tile-line:#4A463D;
+  --wood:#7A5A3F; --red:#9C4A32; --green:#5C7160; --moon:#F6EFDC;
+  --glyph:#3A342A; --glyph-alpha:0.88; --shadow-alpha:0.09;
   --card:#EFE9D8; --hairline:rgba(43,40,34,.28);
 }
 :root[data-theme="dark"]{
   --paper:#191813; --paper-deep:#14130F; --ink:#DCD3BD; --ink-soft:#9A9077;
-  --tile:#26241F; --tile-line:#3B382F; --red:#B86A50; --green:#7C927F;
-  --moon:#EFE5C8; --glyph:#CFC5AA; --glyph-alpha:0.85; --shadow-alpha:0.16;
+  --tile:#26241F; --tile-hi:#37342B; --tile-lo:#1B1915; --tile-line:#3B382F;
+  --wood:#6B4E37; --red:#B86A50; --green:#7C927F; --moon:#EFE5C8;
+  --glyph:#CFC5AA; --glyph-alpha:0.85; --shadow-alpha:0.16;
   --card:#201E18; --hairline:rgba(220,211,189,.25);
 }
 
@@ -117,9 +113,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--red);outline-offset
 #blind{position:absolute;inset:0;z-index:3;display:block}
 #roofMount{position:absolute;inset:0;z-index:4;pointer-events:none}
 #roofMount svg{position:absolute;overflow:visible;
-  filter:drop-shadow(22px 26px 18px rgba(30,25,15,.22));}
-:root[data-theme="dark"] #roofMount svg,
-html:not([data-theme]) #roofMount svg{transition:filter .4s}
+  filter:drop-shadow(22px 26px 18px rgba(30,25,15,.20));}
 
 /* vertical headline */
 .head{
@@ -329,10 +323,10 @@ const hint = document.getElementById("hint");
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 let W=0, H=0, DPR=1;
-let particles=[], maxDrop=0;
+let strands=[], maxDrop=0, GAP=18;
 let tokens={};
 const spriteCache=new Map();
-let roof={};          // geometry shared by SVG + strands
+let roof={};
 let mouse={x:-9e3,y:-9e3,vx:0,vy:0,px:-9e3,py:-9e3};
 let scrollP=0, entry=reduceMotion?1:0, t0=performance.now();
 
@@ -343,10 +337,6 @@ function readTokens(){
     glyph:s.getPropertyValue("--glyph").trim(),
     glyphAlpha:parseFloat(s.getPropertyValue("--glyph-alpha"))||0.88,
     shadowAlpha:parseFloat(s.getPropertyValue("--shadow-alpha"))||0.09,
-    tile:s.getPropertyValue("--tile").trim(),
-    tileLine:s.getPropertyValue("--tile-line").trim(),
-    red:s.getPropertyValue("--red").trim(),
-    ink:s.getPropertyValue("--ink").trim(),
   };
   spriteCache.clear();
 }
@@ -369,85 +359,149 @@ function sprite(ch){
   return c;
 }
 
-/* ── roof geometry + SVG ── */
-function eaveY(u){ return roof.eaveBase - roof.lift*Math.pow(Math.abs(u),2.7); }
+/* ── roof geometry ─────────────────────────────────────
+   Front elevation of a giwa roof: sagging ridge with
+   raised mangwa ends, tiled slope (sukiwa ridges over
+   giwatgol courses), rafter tips under a scalloped eave. */
+const eavePow=2.35;
+function eaveY(u){ return roof.eaveBase - roof.lift*Math.pow(Math.abs(u),eavePow); }
 
 function buildRoof(){
-  const rw=Math.min(W*0.60, 700);
-  const rh=rw*0.30;
-  roof={
-    w:rw, h:rh,
-    cx:W/2,
-    top:H*0.085,
-    lift:rh*0.36,
-  };
+  const rw=Math.min(W*0.62, 720);
+  const rh=rw*0.295;
+  roof={ w:rw, h:rh, cx:W/2, top:H*0.07, lift:rh*0.44 };
   roof.eaveBase=roof.top+rh;
-  const L=roof.cx-rw/2, R=roof.cx+rw/2;
-  const ridgeW=rw*0.52, rL=roof.cx-ridgeW/2, rR=roof.cx+ridgeW/2;
-  const ridgeY=roof.top+rh*0.08;
 
-  const pts=[];
-  for(let i=0;i<=40;i++){const u=-1+2*i/40; pts.push(`${(roof.cx+u*rw/2).toFixed(1)},${eaveY(u).toFixed(1)}`);}
-  const eavePath=pts.join(" L");
+  const cx=roof.cx;
+  const L=cx-rw/2, R=cx+rw/2;
+  const ridgeW=rw*0.485, rL=cx-ridgeW/2, rR=cx+ridgeW/2;
+  const ridgeTop=roof.top, ridgeSag=rh*0.075;
+  const ridgeY=v=>ridgeTop+ridgeSag*(1-Math.pow(Math.abs(v),1.7));
+  const ridgeH=rh*0.105;
 
-  // tile fan lines ridge → eave
-  let fan="";
-  const N=26;
+  const P=(x,y)=>`${x.toFixed(1)},${y.toFixed(1)}`;
+  const eavePts=n=>{const a=[];for(let i=0;i<=n;i++){const u=-1+2*i/n;a.push(P(cx+u*rw/2,eaveY(u)));}return a.join(" L");};
+
+  /* roof face: hip edges bow slightly inward (concave sweep) */
+  const hip=(side)=>{ // side -1 left, +1 right
+    const x1=cx+side*ridgeW/2, y1=ridgeY(side)+ridgeH*0.4;
+    const x2=cx+side*rw/2,     y2=eaveY(side);
+    const mx=x1+(x2-x1)*0.45,  my=y1+(y2-y1)*0.62;
+    return {x1,y1,x2,y2,mx,my};
+  };
+  const hl=hip(-1), hr=hip(1);
+  const facePath=
+    `M${P(hl.x2,hl.y2)} Q${P(hl.mx,hl.my)} ${P(hl.x1,hl.y1)}`+
+    ` L${P(hr.x1,hr.y1)} Q${P(hr.mx,hr.my)} ${P(hr.x2,hr.y2)}`+
+    ` L${eavePts(48).split(" L").reverse().join(" L")} Z`;
+
+  /* vertical sukiwa (convex tile ridges): tapered strokes fanning ridge→eave */
+  let sukiwa="";
+  const N=Math.max(22,Math.round(rw/26));
   for(let i=0;i<=N;i++){
     const v=-1+2*i/N;
-    const x1=roof.cx+v*ridgeW/2, y1=ridgeY+4;
-    const u=v*0.985, x2=roof.cx+u*rw/2, y2=eaveY(u)-1;
-    const mx=(x1+x2)/2, my=(y1+y2)/2+rh*0.045;
-    fan+=`<path d="M${x1},${y1} Q${mx},${my} ${x2},${y2}" stroke="var(--tile-line)" stroke-width="1.6" fill="none"/>`;
+    const x1=cx+v*(ridgeW/2)*0.985, y1=ridgeY(v)+ridgeH*0.55;
+    const u=v*0.982, x2=cx+u*rw/2, y2=eaveY(u)-2;
+    const mx=(x1+x2)/2+(x2-x1)*0.06, my=(y1+y2)/2+rh*0.055;
+    sukiwa+=`<path d="M${P(x1,y1)} Q${P(mx,my)} ${P(x2,y2)}" stroke="var(--tile-lo)" stroke-width="3.4" fill="none" opacity=".85"/>`+
+            `<path d="M${P(x1-1.1,y1)} Q${P(mx-1.1,my)} ${P(x2-1.1,y2)}" stroke="var(--tile-hi)" stroke-width="1.1" fill="none" opacity=".55"/>`;
   }
-  // 막새 (round eave-end tiles)
+  /* horizontal giwatgol courses: faint arcs parallel to the eave */
+  let courses="";
+  for(let k=1;k<=6;k++){
+    const f=k/7, pts=[];
+    for(let i=0;i<=36;i++){
+      const u=-0.985+1.97*i/36;
+      const yTop=ridgeY(u)+ridgeH*0.55, yBot=eaveY(u*0.995)-3;
+      pts.push(P(cx+u*(ridgeW/2+(rw/2-ridgeW/2)*f)*0.997, yTop+(yBot-yTop)*f));
+    }
+    courses+=`<path d="M${pts.join(" L")}" stroke="var(--tile-hi)" stroke-width=".8" fill="none" opacity=".28"/>`;
+  }
+
+  /* rafter tips (서까래) peeking below the eave */
+  let rafters="";
+  const rstep=rw/Math.floor(rw/30);
+  for(let x=L+rstep*0.6;x<R-rstep*0.2;x+=rstep){
+    const u=(x-cx)/(rw/2), y=eaveY(u)+4;
+    rafters+=`<rect x="${(x-3.4).toFixed(1)}" y="${(y-2).toFixed(1)}" width="6.8" height="8.6" rx="3" fill="var(--wood)" opacity=".9"/>`+
+             `<circle cx="${x.toFixed(1)}" cy="${(y+5.2).toFixed(1)}" r="2" fill="var(--green)" opacity=".55"/>`;
+  }
+
+  /* eave edge: yeonham band + alternating sumaksae (circle) / ammaksae (scallop) */
   let maksae="";
-  const step=rw/Math.floor(rw/17);
-  for(let x=L+step/2;x<R;x+=step){
-    const u=(x-roof.cx)/(rw/2);
-    const y=eaveY(u)+2.5;
-    maksae+=`<circle cx="${x}" cy="${y}" r="3.4" fill="var(--tile)" stroke="var(--tile-line)" stroke-width="1"/>`+
-            `<circle cx="${x}" cy="${y}" r="1.1" fill="var(--red)" opacity=".75"/>`;
+  const mstep=rw/Math.floor(rw/15.5);
+  let alt=false;
+  for(let x=L+mstep/2;x<R;x+=mstep){
+    const u=(x-cx)/(rw/2), y=eaveY(u)+2.2;
+    if(alt){
+      maksae+=`<path d="M${P(x-mstep*0.42,y-1.5)} Q${P(x,y+6.4)} ${P(x+mstep*0.42,y-1.5)} Z" fill="var(--tile)" stroke="var(--tile-line)" stroke-width=".8"/>`;
+    }else{
+      maksae+=`<circle cx="${x.toFixed(1)}" cy="${(y+1.6).toFixed(1)}" r="4.1" fill="var(--tile)" stroke="var(--tile-line)" stroke-width="1"/>`+
+              `<circle cx="${x.toFixed(1)}" cy="${(y+1.6).toFixed(1)}" r="1.7" fill="none" stroke="var(--red)" stroke-width=".9" opacity=".8"/>`;
+    }
+    alt=!alt;
   }
+
+  /* main ridge (용마루) with upturned mangwa ends */
+  const ridgePath=(off)=>{const a=[];for(let i=0;i<=24;i++){const v=-1+2*i/24;a.push(P(cx+v*ridgeW/2,ridgeY(v)+off));}return a.join(" L");};
+  const mangwa=(side)=>{
+    const x=cx+side*ridgeW/2, y=ridgeY(side);
+    return `<path d="M${P(x,y+ridgeH)} L${P(x,y-ridgeH*0.35)} Q${P(x+side*ridgeH*0.55,y-ridgeH*0.72)} ${P(x+side*ridgeH*0.95,y-ridgeH*0.30)} L${P(x+side*ridgeH*0.55,y+ridgeH)} Z" fill="var(--tile)" stroke="var(--tile-line)" stroke-width="1"/>`+
+           `<circle cx="${(x+side*ridgeH*0.62).toFixed(1)}" cy="${(y-ridgeH*0.30).toFixed(1)}" r="2.4" fill="var(--red)" opacity=".8"/>`;
+  };
+
   const svg=
 `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
-  <path d="M${L},${eaveY(-1)} L${eavePath} L${R},${eaveY(1)} L${rR},${ridgeY} L${rL},${ridgeY} Z" fill="var(--tile)"/>
-  ${fan}
-  <path d="M${L},${eaveY(-1)} L${eavePath}" stroke="var(--tile-line)" stroke-width="5" fill="none" stroke-linecap="round"/>
-  <rect x="${rL-10}" y="${ridgeY-9}" width="${ridgeW+20}" height="11" rx="3" fill="var(--tile)" stroke="var(--tile-line)" stroke-width="1.4"/>
-  <circle cx="${rL-10}" cy="${ridgeY-3}" r="5" fill="var(--tile)" stroke="var(--tile-line)" stroke-width="1.4"/>
-  <circle cx="${rR+10}" cy="${ridgeY-3}" r="5" fill="var(--tile)" stroke="var(--tile-line)" stroke-width="1.4"/>
+  <defs>
+    <linearGradient id="tileG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="var(--tile-hi)"/>
+      <stop offset=".55" stop-color="var(--tile)"/>
+      <stop offset="1" stop-color="var(--tile-lo)"/>
+    </linearGradient>
+    <linearGradient id="aoG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="rgba(20,16,10,.30)"/>
+      <stop offset="1" stop-color="rgba(20,16,10,0)"/>
+    </linearGradient>
+  </defs>
+  ${rafters}
+  <path d="${facePath}" fill="url(#tileG)"/>
+  ${courses}
+  ${sukiwa}
+  <path d="M${P(hl.x2,hl.y2)} Q${P(hl.mx,hl.my)} ${P(hl.x1,hl.y1)}" stroke="var(--tile-lo)" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+  <path d="M${P(hr.x2,hr.y2)} Q${P(hr.mx,hr.my)} ${P(hr.x1,hr.y1)}" stroke="var(--tile-lo)" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+  <path d="M${eavePts(48)}" stroke="var(--tile-lo)" stroke-width="5.5" fill="none" stroke-linecap="round"/>
   ${maksae}
+  <path d="M${ridgePath(0)} L${ridgePath(ridgeH).split(" L").reverse().join(" L")} Z" fill="var(--tile-lo)" stroke="var(--tile-line)" stroke-width="1.2"/>
+  <path d="M${ridgePath(ridgeH*0.32)}" stroke="var(--tile-hi)" stroke-width="1" fill="none" opacity=".6"/>
+  ${mangwa(-1)}${mangwa(1)}
+  <path d="M${L},${roof.eaveBase+8} L${eavePts(48)} L${R},${roof.eaveBase+8} Z" fill="url(#aoG)" opacity=".5" transform="translate(0,6)"/>
 </svg>`;
   roofMount.innerHTML=svg;
 }
 
-/* ── strands of hanging glyphs ── */
+/* ── verlet chains: each strand is a rope of glyphs pinned at the eave ── */
 function buildStrands(){
-  particles=[]; maxDrop=0;
+  strands=[]; maxDrop=0;
   const span=0.94;
-  const spacing=W<720?11:9.5;
+  const spacing=W<720?12:10;
   const count=Math.max(24,Math.floor(roof.w*span/spacing));
-  const lineGap=FS+2.5;
+  GAP=FS+3;
   let ci=0;
   for(let s=0;s<=count;s++){
     const u=-span+2*span*s/count;
     const ax=roof.cx+u*roof.w/2;
-    const ay=eaveY(u)+12;
+    const ay=eaveY(u)+14;
     const center=Math.pow(Math.cos(u*Math.PI/2),1.15);
     const len=Math.round(13+7*Math.random()+16*center*(0.55+0.45*Math.random()));
-    const phase=Math.random()*Math.PI*2;
-    const swaySeed=0.75+0.5*Math.random();
-    for(let i=0;i<len;i++){
-      const ch=CORPUS[ci++ % CORPUS.length];
-      const drop=(i+1)*lineGap;
-      maxDrop=Math.max(maxDrop,drop);
-      particles.push({
-        ch, ax, ay, drop, phase, swaySeed,
-        x:ax, y:ay+drop, vx:0, vy:0,
-        jx:(Math.random()-0.5)*2.2,
+    maxDrop=Math.max(maxDrop,len*GAP);
+    const pts=[];
+    for(let i=0;i<=len;i++){
+      pts.push({
+        ch:i===0?null:CORPUS[ci++ % CORPUS.length],
+        x:ax, y:ay+i*GAP*0.02, px:ax, py:ay+i*GAP*0.02,
       });
     }
+    strands.push({ax, ay, homeX:ax, pts, phase:Math.random()*Math.PI*2, seed:0.7+0.6*Math.random()});
   }
 }
 
@@ -484,73 +538,97 @@ addEventListener("scroll",onScroll,{passive:true});
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const smooth=(a,b,v)=>{const t=clamp((v-a)/(b-a),0,1);return t*t*(3-2*t);};
 
-/* ── main loop ── */
+/* ── main loop ─────────────────────────────────────────
+   Verlet rope per strand: pinned at the eave, distance-
+   constrained links, gentle gravity keeps it hanging.
+   The cursor injects a smooth wind impulse; chains part
+   and settle back like silk. */
 function frame(now){
   const t=(now-t0)/1000;
-  if(!reduceMotion) entry=Math.min(1,t/1.9);
+  if(!reduceMotion) entry=Math.min(1,t/2.1);
   const entryE=1-Math.pow(1-entry,3);
+  const gapEff=GAP*entryE;
 
-  // mouse velocity (wind gust)
-  if(mouse.px>-9e3){ mouse.vx=(mouse.x-mouse.px)*0.5+mouse.vx*0.5; mouse.vy=(mouse.y-mouse.py)*0.5+mouse.vy*0.5; }
+  // smoothed cursor velocity = wind gust
+  if(mouse.px>-9e3){
+    mouse.vx=mouse.vx*0.82+(mouse.x-mouse.px)*0.18;
+    mouse.vy=mouse.vy*0.82+(mouse.y-mouse.py)*0.18;
+  }
   mouse.px=mouse.x; mouse.py=mouse.y;
+  const gust=clamp(Math.hypot(mouse.vx,mouse.vy)/26,0,1);
 
-  const rollP=smooth(0.04,0.72,scrollP);          // 발 걷기
-  const visible=maxDrop*entryE*(1-rollP);
+  const rollP=smooth(0.04,0.72,scrollP);
+  const visible=maxDrop*(1-rollP);
   const heroFade=1-smooth(0.82,1,scrollP);
 
   ctx.clearRect(0,0,W,H);
   if(heroFade<=0){ requestAnimationFrame(frame); return; }
 
-  const R=W<720?95:135, R2=R*R;
-  const windT=t*0.85;
+  const R=W<720?110:165, R2=R*R;
+  const DAMP=0.968, GRAV=GAP*0.052, REST=0.024;
+  const windT=t*0.55;
 
-  /* physics + draw: shadow pass then ink pass, cheap single loop with two draws */
-  ctx.globalAlpha=1;
-  for(const p of particles){
-    const dn=p.drop/maxDrop;
+  for(const s of strands){
+    const pts=s.pts, n=pts.length;
+    // ambient breeze: one coherent slow field per strand, stronger with depth
+    const breeze=reduceMotion?0:
+      (Math.sin(windT+s.phase)+0.45*Math.sin(windT*1.9+s.phase*1.63))*0.021*s.seed;
 
-    // rolled-up target: gather into a band under the eave
-    const rolled=smooth(visible,visible+38,p.drop);
-    const hy=p.ay+p.drop*(1-rolled)+rolled*(6+(p.drop%14));
-    const sway=reduceMotion?0:
-      (Math.sin(windT+p.phase+dn*2.6)+0.55*Math.sin(windT*1.7+p.phase*1.6))
-      *(0.5+3.4*dn*dn)*p.swaySeed;
-    const hx=p.ax+p.jx+sway;
-
-    // cursor = wind
-    let fx=0,fy=0;
-    const dx=p.x-mouse.x, dy=p.y-mouse.y, d2=dx*dx+dy*dy;
-    if(d2<R2 && rolled<0.7){
-      const d=Math.sqrt(d2)||1, f=(1-d/R);
-      const push=f*f*2.6;
-      fx=(dx/d)*push+mouse.vx*0.10*f;
-      fy=(dy/d)*push*0.45+mouse.vy*0.06*f;
+    // integrate (skip pinned 0)
+    for(let i=1;i<n;i++){
+      const p=pts[i], dn=i/n;
+      let vx=(p.x-p.px)*DAMP, vy=(p.y-p.py)*DAMP;
+      p.px=p.x; p.py=p.y;
+      let fx=breeze*dn + (s.homeX-p.x)*REST*(0.4+0.6*dn);
+      let fy=GRAV;
+      const dx=p.x-mouse.x, dy=p.y-mouse.y, d2=dx*dx+dy*dy;
+      if(d2<R2){
+        const d=Math.sqrt(d2)||1, f=1-d/R;
+        const soft=f*f*(3-2*f);          // smoothstep falloff — no hard edge
+        fx+=(dx/d)*soft*1.55 + mouse.vx*0.125*soft*(0.5+gust);
+        fy+=(dy/d)*soft*0.30 + mouse.vy*0.045*soft;
+      }
+      p.x+=clamp(vx+fx,-9,9); p.y+=clamp(vy+fy,-9,9);
     }
+    // constraints: keep links at gapEff (2 relaxation passes = silky)
+    for(let pass=0;pass<2;pass++){
+      pts[0].x=s.ax; pts[0].y=s.ay;
+      for(let i=1;i<n;i++){
+        const a=pts[i-1], b=pts[i];
+        let dx=b.x-a.x, dy=b.y-a.y;
+        let d=Math.hypot(dx,dy)||1e-4;
+        const diff=(d-gapEff)/d;
+        if(i===1){ b.x-=dx*diff; b.y-=dy*diff; }
+        else{ const h=diff*0.5; a.x+=dx*h; a.y+=dy*h; b.x-=dx*h; b.y-=dy*h; }
+      }
+    }
+  }
 
-    p.vx=(p.vx+(hx-p.x)*0.022+fx)*0.90;
-    p.vy=(p.vy+(hy-p.y)*0.030+fy)*0.88;
-    p.x+=p.vx; p.y+=p.vy;
-
-    const alpha=(tokens.glyphAlpha-(0.18*dn))*(1-rolled*0.72)*heroFade;
-    if(alpha<0.02) continue;
-    const sp=sprite(p.ch), sz=sp.width/DPR;
-
-    // cast shadow (skewed right, deeper with drop)
-    ctx.globalAlpha=tokens.shadowAlpha*alpha;
-    ctx.drawImage(sp,p.x-sz/2+10+(p.y-p.ay)*0.16,p.y-sz/2+7,sz,sz);
-    // ink
-    ctx.globalAlpha=alpha;
-    ctx.drawImage(sp,p.x-sz/2,p.y-sz/2,sz,sz);
+  /* draw: shadow pass under ink pass */
+  for(const s of strands){
+    const pts=s.pts, n=pts.length;
+    for(let i=1;i<n;i++){
+      const p=pts[i];
+      const drop=i*GAP;
+      const rolled=smooth(visible,visible+44,drop);
+      const rx=p.x+(s.ax-p.x)*rolled;
+      const ry=p.y+((s.ay+7+(drop%13))-p.y)*rolled;
+      const alpha=(tokens.glyphAlpha-0.16*(i/n))*(1-rolled*0.75)*heroFade*entryE;
+      if(alpha<0.02) continue;
+      const sp=sprite(p.ch), sz=sp.width/DPR;
+      ctx.globalAlpha=tokens.shadowAlpha*alpha;
+      ctx.drawImage(sp,rx-sz/2+10+(ry-s.ay)*0.15,ry-sz/2+7,sz,sz);
+      ctx.globalAlpha=alpha;
+      ctx.drawImage(sp,rx-sz/2,ry-sz/2,sz,sz);
+    }
   }
   ctx.globalAlpha=1;
 
-  // hero elements fade/lift on late scroll
   hero.style.opacity=heroFade<1?String(0.15+0.85*heroFade):"";
-
   requestAnimationFrame(frame);
 }
 
-/* ── theme change → recolor canvas ── */
+/* ── theme change → recolor ── */
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",()=>{readTokens();buildRoof();});
 new MutationObserver(()=>{readTokens();buildRoof();})
   .observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
