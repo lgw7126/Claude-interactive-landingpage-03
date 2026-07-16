@@ -428,9 +428,9 @@ function buildRoof(){
 function buildStrands(){
   strands=[]; maxDrop=0;
   const span=0.78;   // hang only from the solid lintel span, not the lifted eave tips
-  const spacing=W<720?12:10;
+  const spacing=W<720?12:11;
   const count=Math.max(24,Math.floor(roof.w*span/spacing));
-  GAP=FS+3;
+  GAP=FS+6;   // generous air between glyphs
   let ci=0;
   for(let s=0;s<=count;s++){
     const u=-span+2*span*s/count;
@@ -457,7 +457,7 @@ function buildStrands(){
 function resize(){
   DPR=Math.min(devicePixelRatio||1,2);
   W=hero.clientWidth; H=hero.clientHeight;
-  FS=W<720?12.5:15;
+  FS=W<720?7.5:9;
   canvas.width=W*DPR; canvas.height=H*DPR;
   canvas.style.width=W+"px"; canvas.style.height=H+"px";
   ctx.setTransform(DPR,0,0,DPR,0,0);
@@ -522,15 +522,16 @@ function frame(now){
     const breeze=reduceMotion?0:
       (Math.sin(windT+s.phase)+0.45*Math.sin(windT*1.9+s.phase*1.63))*0.05*s.seed;
 
-    // entrainment: glyphs caught near the cursor travel with it
+    // entrainment: glyphs caught near the cursor travel with it —
+    // the deeper the glyph, the lighter it rides an upward gust
     for(let i=1;i<n;i++){
-      const p=pts[i];
+      const p=pts[i], dn=i/n;
       const mdx=mouse.x-p.x, mdy=mouse.y-p.y, d2=mdx*mdx+mdy*mdy;
       if(d2<R2){
         const d=Math.sqrt(d2)||1, f=1-d/R;
         const soft=f*f*(3-2*f);
         p.x+=mouse.vx*0.50*soft + mdx*0.040*soft;
-        p.y+=mouse.vy*0.42*soft + mdy*0.026*soft;
+        p.y+=mouse.vy*(0.42+0.55*dn)*soft + mdy*0.026*soft;
       }
     }
 
@@ -554,7 +555,8 @@ function frame(now){
         const tx=prev.x+(dx/nl)*s.gap, ty=prev.y+(dy/nl)*s.gap;
         const ease=0.16-0.11*dn;              // tails trail and settle last
         p.x+=(tx-p.x)*ease;
-        p.y+=(ty-p.y)*ease;
+        const fall=ty-p.y;                    // lifted glyphs float back down slowly
+        p.y+=fall*(fall>0?ease*0.40:ease);
         const rest=0.012-0.006*dn;            // slow return to the home column
         p.x+=(s.homeX-p.x)*rest;
       }
