@@ -445,6 +445,7 @@ function buildStrands(){
       pts.push({
         ch:i===0?null:CORPUS[ci++ % CORPUS.length],
         x:ax, y:ay+i*gap,     // born fully draped; the entry reveal is render-only
+        grip:0,
       });
     }
     strands.push({ax, ay, homeX:ax, gap, pts,
@@ -505,6 +506,7 @@ function frame(now){
     mouse.vy=mouse.vy*0.80+(mouse.y-mouse.py)*0.20;
   }else{ mouse.vx=0; mouse.vy=0; }
   mouse.px=mouse.x; mouse.py=mouse.y;
+  const gspd=Math.hypot(mouse.vx,mouse.vy);
 
   const rollP=smooth(0.04,0.72,scrollP);
   const visible=maxDrop*Math.min(entryE,1-rollP);   // entry lowers the blind, scroll raises it
@@ -522,16 +524,23 @@ function frame(now){
     const breeze=reduceMotion?0:
       (Math.sin(windT+s.phase)+0.45*Math.sin(windT*1.9+s.phase*1.63))*0.05*s.seed;
 
-    // entrainment: glyphs caught near the cursor travel with it —
-    // the deeper the glyph, the lighter it rides an upward gust
+    // entrainment: a glyph the cursor touches is gripped, and a gripped
+    // glyph keeps riding the cursor even outside the radius — so a slow
+    // upward pull draws the tail with it in one long trail. Grip fades
+    // in ~a second once the cursor stops or lets go.
     for(let i=1;i<n;i++){
       const p=pts[i], dn=i/n;
       const mdx=mouse.x-p.x, mdy=mouse.y-p.y, d2=mdx*mdx+mdy*mdy;
+      let soft=0;
       if(d2<R2){
         const d=Math.sqrt(d2)||1, f=1-d/R;
-        const soft=f*f*(3-2*f);
-        p.x+=mouse.vx*0.50*soft + mdx*0.040*soft;
-        p.y+=mouse.vy*(0.42+0.55*dn)*soft + mdy*0.026*soft;
+        soft=f*f*(3-2*f);
+      }
+      p.grip=Math.max(soft, p.grip*(gspd>2?0.945:0.86));
+      if(p.grip>0.01){
+        const k=p.grip;
+        p.x+=clamp(mouse.vx*0.55*k,-14,14) + mdx*0.035*soft;
+        p.y+=clamp(mouse.vy*(0.45+0.75*dn)*k,-14,14) + mdy*0.024*soft;
       }
     }
 
@@ -553,7 +562,8 @@ function frame(now){
         dy+=(1-dy)*g;
         const nl=Math.hypot(dx,dy)||1e-4;
         const tx=prev.x+(dx/nl)*s.gap, ty=prev.y+(dy/nl)*s.gap;
-        const ease=0.16-0.11*dn;              // tails trail and settle last
+        const hold=1-0.72*p.grip;             // a held glyph resists re-draping
+        const ease=(0.16-0.11*dn)*hold;       // tails trail and settle last
         p.x+=(tx-p.x)*ease;
         const fall=ty-p.y;                    // lifted glyphs float back down slowly
         p.y+=fall*(fall>0?ease*0.40:ease);
