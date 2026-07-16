@@ -493,15 +493,18 @@ function buildStrands(){
     const ay=eaveY(u)+14;
     const center=Math.pow(Math.cos(u*Math.PI/2),1.15);
     const len=Math.round(13+7*Math.random()+16*center*(0.55+0.45*Math.random()));
-    maxDrop=Math.max(maxDrop,len*GAP);
+    const gap=GAP*(0.90+0.20*Math.random());   // hand-tied strands: no two spaced alike
+    maxDrop=Math.max(maxDrop,len*gap);
     const pts=[];
     for(let i=0;i<=len;i++){
       pts.push({
         ch:i===0?null:CORPUS[ci++ % CORPUS.length],
-        x:ax, y:ay+i*GAP*0.02, px:ax, py:ay+i*GAP*0.02,
+        x:ax, y:ay+i*gap,     // born fully draped; the entry reveal is render-only
       });
     }
-    strands.push({ax, ay, homeX:ax, pts, phase:Math.random()*Math.PI*2, seed:0.7+0.6*Math.random()});
+    strands.push({ax, ay, homeX:ax, gap, pts,
+      phase:Math.random()*Math.PI*2, seed:0.7+0.6*Math.random(),
+      tone:0.78+0.22*Math.random()});
   }
 }
 
@@ -539,67 +542,76 @@ const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const smooth=(a,b,v)=>{const t=clamp((v-a)/(b-a),0,1);return t*t*(3-2*t);};
 
 /* ── main loop ─────────────────────────────────────────
-   Verlet rope per strand: pinned at the eave, distance-
-   constrained links, gentle gravity keeps it hanging.
-   The cursor injects a smooth wind impulse; chains part
-   and settle back like silk. */
+   Drape model, no velocities: each glyph slowly eases
+   toward hanging one gap below the glyph above it, the
+   link direction relaxing toward vertical. Overdamped by
+   construction — nothing can ever bounce. The cursor
+   entrains nearby glyphs, dragging them along its wake
+   (as in the reference); on release the curtain
+   re-drapes from the top down, tails settling last. */
 function frame(now){
   const t=(now-t0)/1000;
-  if(!reduceMotion) entry=Math.min(1,t/2.1);
+  if(!reduceMotion) entry=Math.min(1,t/2.4);
   const entryE=1-Math.pow(1-entry,3);
-  const gapEff=GAP*entryE;
 
-  // smoothed cursor velocity = wind gust
+  // smoothed cursor velocity — the drag field
   if(mouse.px>-9e3){
-    mouse.vx=mouse.vx*0.82+(mouse.x-mouse.px)*0.18;
-    mouse.vy=mouse.vy*0.82+(mouse.y-mouse.py)*0.18;
-  }
+    mouse.vx=mouse.vx*0.80+(mouse.x-mouse.px)*0.20;
+    mouse.vy=mouse.vy*0.80+(mouse.y-mouse.py)*0.20;
+  }else{ mouse.vx=0; mouse.vy=0; }
   mouse.px=mouse.x; mouse.py=mouse.y;
-  const gust=clamp(Math.hypot(mouse.vx,mouse.vy)/26,0,1);
 
   const rollP=smooth(0.04,0.72,scrollP);
-  const visible=maxDrop*(1-rollP);
+  const visible=maxDrop*Math.min(entryE,1-rollP);   // entry lowers the blind, scroll raises it
   const heroFade=1-smooth(0.82,1,scrollP);
 
   ctx.clearRect(0,0,W,H);
   if(heroFade<=0){ requestAnimationFrame(frame); return; }
 
-  const R=W<720?110:165, R2=R*R;
-  const DAMP=0.968, GRAV=GAP*0.052, REST=0.024;
-  const windT=t*0.55;
+  const R=W<720?105:145, R2=R*R;
+  const windT=t*0.5;
 
   for(const s of strands){
     const pts=s.pts, n=pts.length;
-    // ambient breeze: one coherent slow field per strand, stronger with depth
+    pts[0].x=s.ax; pts[0].y=s.ay;
     const breeze=reduceMotion?0:
-      (Math.sin(windT+s.phase)+0.45*Math.sin(windT*1.9+s.phase*1.63))*0.021*s.seed;
+      (Math.sin(windT+s.phase)+0.45*Math.sin(windT*1.9+s.phase*1.63))*0.05*s.seed;
 
-    // integrate (skip pinned 0)
+    // entrainment: glyphs caught near the cursor travel with it
     for(let i=1;i<n;i++){
-      const p=pts[i], dn=i/n;
-      let vx=(p.x-p.px)*DAMP, vy=(p.y-p.py)*DAMP;
-      p.px=p.x; p.py=p.y;
-      let fx=breeze*dn + (s.homeX-p.x)*REST*(0.4+0.6*dn);
-      let fy=GRAV;
-      const dx=p.x-mouse.x, dy=p.y-mouse.y, d2=dx*dx+dy*dy;
+      const p=pts[i];
+      const mdx=mouse.x-p.x, mdy=mouse.y-p.y, d2=mdx*mdx+mdy*mdy;
       if(d2<R2){
         const d=Math.sqrt(d2)||1, f=1-d/R;
-        const soft=f*f*(3-2*f);          // smoothstep falloff — no hard edge
-        fx+=(dx/d)*soft*1.55 + mouse.vx*0.125*soft*(0.5+gust);
-        fy+=(dy/d)*soft*0.30 + mouse.vy*0.045*soft;
+        const soft=f*f*(3-2*f);
+        p.x+=mouse.vx*0.50*soft + mdx*0.040*soft;
+        p.y+=mouse.vy*0.42*soft + mdy*0.026*soft;
       }
-      p.x+=clamp(vx+fx,-9,9); p.y+=clamp(vy+fy,-9,9);
     }
-    // constraints: keep links at gapEff (2 relaxation passes = silky)
-    for(let pass=0;pass<2;pass++){
-      pts[0].x=s.ax; pts[0].y=s.ay;
+
+    // drape: link direction eases toward vertical (plus a breath of
+    // breeze), position eases toward hanging below the parent glyph.
+    // Three relaxation passes per frame so the settling wave travels
+    // the strand in a couple of seconds, tails arriving last.
+    for(let pass=0;pass<3;pass++){
       for(let i=1;i<n;i++){
-        const a=pts[i-1], b=pts[i];
-        let dx=b.x-a.x, dy=b.y-a.y;
-        let d=Math.hypot(dx,dy)||1e-4;
-        const diff=(d-gapEff)/d;
-        if(i===1){ b.x-=dx*diff; b.y-=dy*diff; }
-        else{ const h=diff*0.5; a.x+=dx*h; a.y+=dy*h; b.x-=dx*h; b.y-=dy*h; }
+        const p=pts[i], prev=pts[i-1], dn=i/n;
+        let dx=p.x-prev.x, dy=p.y-prev.y;
+        const dl=Math.hypot(dx,dy)||1e-4;
+        const w=Math.min(1,dl/s.gap);         // a squashed link hangs straight down
+        dx=(dx/dl)*w; dy=(dy/dl)*w+(1-w);
+        {const m=Math.hypot(dx,dy)||1e-4; dx/=m; dy/=m;}
+        if(dy<0.17){ dy=0.17; const m=Math.hypot(dx,dy); dx/=m; dy/=m; } // a blind can't fold upward
+        const g=0.040*(1.25-0.5*dn);          // top straightens first
+        dx+=(breeze*(0.25+0.75*dn)-dx)*g;
+        dy+=(1-dy)*g;
+        const nl=Math.hypot(dx,dy)||1e-4;
+        const tx=prev.x+(dx/nl)*s.gap, ty=prev.y+(dy/nl)*s.gap;
+        const ease=0.16-0.11*dn;              // tails trail and settle last
+        p.x+=(tx-p.x)*ease;
+        p.y+=(ty-p.y)*ease;
+        const rest=0.012-0.006*dn;            // slow return to the home column
+        p.x+=(s.homeX-p.x)*rest;
       }
     }
   }
@@ -609,11 +621,11 @@ function frame(now){
     const pts=s.pts, n=pts.length;
     for(let i=1;i<n;i++){
       const p=pts[i];
-      const drop=i*GAP;
+      const drop=i*s.gap;
       const rolled=smooth(visible,visible+44,drop);
       const rx=p.x+(s.ax-p.x)*rolled;
       const ry=p.y+((s.ay+7+(drop%13))-p.y)*rolled;
-      const alpha=(tokens.glyphAlpha-0.16*(i/n))*(1-rolled*0.75)*heroFade*entryE;
+      const alpha=(tokens.glyphAlpha-0.16*(i/n))*s.tone*(1-rolled*0.75)*heroFade;
       if(alpha<0.02) continue;
       const sp=sprite(p.ch), sz=sp.width/DPR;
       ctx.globalAlpha=tokens.shadowAlpha*alpha;
