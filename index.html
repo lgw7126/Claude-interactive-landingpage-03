@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>월하재 月下齋 — 달 아래 머무는 집</title>
+<meta name="description" content="한옥스테이 월하재. 처마 끝에 걸린 글자의 발을 바람으로 흔들어 보세요.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+/* ── tokens ─────────────────────────────────────────── */
+:root{
+  --paper:#EAE4D2;        /* 한지 */
+  --paper-deep:#E0D8C2;
+  --ink:#2B2822;          /* 먹 */
+  --ink-soft:#5A5346;
+  --tile:#33302A;         /* 기와 */
+  --tile-line:#4A463D;
+  --red:#9C4A32;          /* 석간주 */
+  --green:#5C7160;        /* 뇌록 */
+  --moon:#F6EFDC;
+  --glyph:#3A342A;
+  --glyph-alpha:0.88;
+  --shadow-alpha:0.09;
+  --card:#EFE9D8;
+  --hairline:rgba(43,40,34,.28);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#191813;
+    --paper-deep:#14130F;
+    --ink:#DCD3BD;
+    --ink-soft:#9A9077;
+    --tile:#26241F;
+    --tile-line:#3B382F;
+    --red:#B86A50;
+    --green:#7C927F;
+    --moon:#EFE5C8;
+    --glyph:#CFC5AA;
+    --glyph-alpha:0.85;
+    --shadow-alpha:0.16;
+    --card:#201E18;
+    --hairline:rgba(220,211,189,.25);
+  }
+}
+:root[data-theme="light"]{
+  --paper:#EAE4D2; --paper-deep:#E0D8C2; --ink:#2B2822; --ink-soft:#5A5346;
+  --tile:#33302A; --tile-line:#4A463D; --red:#9C4A32; --green:#5C7160;
+  --moon:#F6EFDC; --glyph:#3A342A; --glyph-alpha:0.88; --shadow-alpha:0.09;
+  --card:#EFE9D8; --hairline:rgba(43,40,34,.28);
+}
+:root[data-theme="dark"]{
+  --paper:#191813; --paper-deep:#14130F; --ink:#DCD3BD; --ink-soft:#9A9077;
+  --tile:#26241F; --tile-line:#3B382F; --red:#B86A50; --green:#7C927F;
+  --moon:#EFE5C8; --glyph:#CFC5AA; --glyph-alpha:0.85; --shadow-alpha:0.16;
+  --card:#201E18; --hairline:rgba(220,211,189,.25);
+}
+
+/* ── base ───────────────────────────────────────────── */
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  overflow-x:hidden;
+  line-height:1.7;
+}
+::selection{background:var(--red);color:var(--paper)}
+
+/* paper grain */
+body::after{
+  content:"";position:fixed;inset:0;z-index:60;pointer-events:none;
+  opacity:.055;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+@media (prefers-color-scheme: dark){ body::after{mix-blend-mode:screen;opacity:.045} }
+:root[data-theme="dark"] body::after{mix-blend-mode:screen;opacity:.045}
+:root[data-theme="light"] body::after{mix-blend-mode:multiply;opacity:.055}
+
+h1,h2,h3,.serif{font-family:"Gowun Batang","Nanum Myeongjo",serif}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.72rem;letter-spacing:.12em;color:var(--ink-soft)}
+
+/* ── nav ────────────────────────────────────────────── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:50;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:1.1rem clamp(1.2rem,4vw,3rem);
+}
+nav .brand{font-family:"Gowun Batang",serif;font-weight:700;font-size:1.05rem;letter-spacing:.35em;text-decoration:none;color:var(--ink)}
+nav .brand small{font-size:.6em;letter-spacing:.2em;color:var(--ink-soft);margin-left:.6em}
+nav ul{display:flex;gap:2rem;list-style:none}
+nav ul a{text-decoration:none;color:var(--ink-soft);font-size:.82rem;letter-spacing:.2em;transition:color .3s}
+nav ul a:hover,nav ul a:focus-visible{color:var(--red)}
+nav .cta{
+  font-size:.78rem;letter-spacing:.25em;text-decoration:none;
+  color:var(--paper);background:var(--ink);padding:.55em 1.4em;
+  transition:background .3s;
+}
+nav .cta:hover,nav .cta:focus-visible{background:var(--red)}
+a:focus-visible,button:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+@media (max-width:720px){ nav ul{display:none} }
+
+/* ── hero / scroll stage ────────────────────────────── */
+.stage{height:320vh;position:relative}
+.hero{
+  position:sticky;top:0;height:100vh;height:100svh;overflow:hidden;
+}
+.moon{
+  position:absolute;z-index:1;
+  width:min(34vw,340px);aspect-ratio:1;border-radius:50%;
+  right:12%;top:9%;
+  background:radial-gradient(circle at 42% 40%, var(--moon) 0%, var(--moon) 55%, transparent 72%);
+  opacity:.5;filter:blur(2px);
+}
+#blind{position:absolute;inset:0;z-index:3;display:block}
+#roofMount{position:absolute;inset:0;z-index:4;pointer-events:none}
+#roofMount svg{position:absolute;overflow:visible;
+  filter:drop-shadow(22px 26px 18px rgba(30,25,15,.22));}
+:root[data-theme="dark"] #roofMount svg,
+html:not([data-theme]) #roofMount svg{transition:filter .4s}
+
+/* vertical headline */
+.head{
+  position:absolute;z-index:5;pointer-events:none;
+  left:clamp(1.2rem,5vw,4.5rem);top:50%;transform:translateY(-46%);
+  display:flex;flex-direction:row-reverse;gap:clamp(.8rem,2vw,1.6rem);
+  align-items:flex-start;
+}
+.head h1{
+  writing-mode:vertical-rl;text-orientation:upright;
+  font-size:clamp(1.9rem,4.6vw,3.4rem);
+  font-weight:700;letter-spacing:.28em;line-height:1.55;
+  color:var(--ink);
+}
+.head h1 em{font-style:normal;color:var(--red)}
+.head .sub{
+  writing-mode:vertical-rl;text-orientation:upright;
+  font-size:clamp(.72rem,1.1vw,.85rem);letter-spacing:.34em;
+  color:var(--ink-soft);padding-top:.4em;
+}
+.head .rule{width:1px;background:var(--hairline);align-self:stretch}
+
+.side-note{
+  position:absolute;z-index:5;right:clamp(1.2rem,4vw,3rem);bottom:14%;
+  writing-mode:vertical-rl;text-orientation:mixed;
+  font-family:"IBM Plex Mono",monospace;font-size:.68rem;
+  letter-spacing:.3em;color:var(--ink-soft);
+}
+.hint{
+  position:absolute;z-index:5;left:50%;bottom:4.5%;transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:.6rem;
+  transition:opacity .5s;
+}
+.hint .mono{font-size:.66rem;background:color-mix(in srgb,var(--paper) 78%,transparent);padding:.35em .9em}
+.hint .line{width:1px;height:44px;background:var(--ink-soft);
+  animation:drop 2.2s ease-in-out infinite}
+@keyframes drop{0%{transform:scaleY(0);transform-origin:top}
+  55%{transform:scaleY(1);transform-origin:top}
+  56%{transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+@media (prefers-reduced-motion: reduce){.hint .line{animation:none}}
+
+@media (max-width:720px){
+  .head{left:1.2rem;top:auto;bottom:17%;transform:none;flex-direction:column;gap:.6rem}
+  .hint{bottom:2.5%}
+  .head h1{writing-mode:horizontal-tb;font-size:1.7rem;letter-spacing:.12em;line-height:1.5}
+  .head .sub{writing-mode:horizontal-tb;letter-spacing:.2em}
+  .head .rule{display:none}
+  .side-note{display:none}
+  .moon{right:6%;top:6%;width:44vw}
+}
+
+/* ── sections ───────────────────────────────────────── */
+section{position:relative;z-index:10;background:var(--paper)}
+.wrap{max-width:1060px;margin:0 auto;padding:clamp(4rem,10vh,7rem) clamp(1.4rem,5vw,3rem)}
+
+.eyebrow{display:flex;align-items:center;gap:1rem;margin-bottom:2.4rem}
+.eyebrow .mono{color:var(--red)}
+.eyebrow .bar{height:1px;flex:0 0 56px;background:var(--red)}
+
+.intro p.big{
+  font-family:"Gowun Batang",serif;
+  font-size:clamp(1.25rem,2.6vw,1.9rem);line-height:2;
+  max-width:34em;text-wrap:balance;
+}
+.intro p.big strong{color:var(--red);font-weight:700}
+.intro .aside{margin-top:2.2rem;max-width:36em;color:var(--ink-soft);font-size:.92rem}
+
+/* offerings */
+.rooms .grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+  background:var(--hairline);border:1px solid var(--hairline);
+}
+.room{
+  background:var(--card);padding:2.6rem 2rem 2.2rem;position:relative;overflow:hidden;
+  min-height:320px;display:flex;flex-direction:column;justify-content:flex-end;gap:.9rem;
+}
+.room .hanja{
+  position:absolute;top:-.18em;right:.05em;z-index:0;
+  font-family:"Gowun Batang",serif;font-size:6.4rem;line-height:1;
+  color:var(--ink);opacity:.07;writing-mode:vertical-rl;letter-spacing:.05em;
+}
+.room h3{font-size:1.25rem;letter-spacing:.2em;position:relative;z-index:1}
+.room h3 span{display:block;font-size:.68rem;letter-spacing:.3em;color:var(--red);margin-bottom:.7em;font-family:"IBM Plex Mono",monospace}
+.room p{font-size:.88rem;color:var(--ink-soft);position:relative;z-index:1}
+@media (max-width:820px){ .rooms .grid{grid-template-columns:1fr} .room{min-height:0} }
+
+/* reserve band */
+.reserve{background:var(--tile);color:var(--moon)}
+:root[data-theme="light"] .reserve{color:#F6EFDC}
+.reserve .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:2rem}
+.reserve h2{font-size:clamp(1.5rem,3.4vw,2.4rem);letter-spacing:.14em;text-wrap:balance}
+.reserve h2 .dot{display:inline-block;width:.55em;height:.55em;border-radius:50%;background:var(--moon);margin-right:.45em;vertical-align:.08em}
+.reserve p{color:color-mix(in srgb, var(--moon) 65%, transparent);font-size:.9rem;max-width:30em;margin-top:1rem}
+.reserve a.btn{
+  flex-shrink:0;text-decoration:none;letter-spacing:.3em;font-size:.85rem;
+  color:var(--tile);background:var(--moon);padding:1em 2.4em;
+  transition:background .3s,color .3s;
+}
+.reserve a.btn:hover,.reserve a.btn:focus-visible{background:var(--red);color:var(--moon)}
+
+footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:1.5rem;
+  padding-top:2.5rem;padding-bottom:2.5rem;border-top:1px solid var(--hairline)}
+footer .mono{font-size:.68rem}
+</style>
+</head>
+<body>
+
+<nav aria-label="주 메뉴">
+  <a class="brand" href="#top">월하재<small>月下齋</small></a>
+  <ul>
+    <li><a href="#story">이야기</a></li>
+    <li><a href="#stay">머무름</a></li>
+    <li><a href="#reserve">예약</a></li>
+  </ul>
+  <a class="cta" href="#reserve">예약하기</a>
+</nav>
+
+<div class="stage" id="top">
+  <div class="hero" id="hero">
+    <div class="moon" aria-hidden="true"></div>
+    <canvas id="blind" aria-label="처마에 걸린 한글 발 — 마우스를 움직이면 바람이 붑니다"></canvas>
+    <div id="roofMount" aria-hidden="true"></div>
+
+    <header class="head">
+      <h1>달&nbsp;아래&nbsp;처마<br><em>바람이&nbsp;읽는</em><br>글자의&nbsp;발</h1>
+      <div class="rule" aria-hidden="true"></div>
+      <p class="sub">한옥에&nbsp;머무는&nbsp;하룻밤&nbsp;—&nbsp;월하재</p>
+    </header>
+
+    <p class="side-note" aria-hidden="true">簾 — 커서는 바람이 됩니다</p>
+
+    <div class="hint" id="hint" aria-hidden="true">
+      <span class="mono">SCROLL — 발을 걷다</span>
+      <span class="line"></span>
+    </div>
+  </div>
+</div>
+
+<section class="intro" id="story">
+  <div class="wrap">
+    <div class="eyebrow"><span class="bar"></span><span class="mono">01 — 이야기</span></div>
+    <p class="big">발을 걷으면 마당이 보입니다. 월하재의 발은 대나무가 아니라 <strong>글자</strong>로 엮었습니다 — 처마 끝에 서시(序詩)와 산유화를 매달아, 바람이 불 때마다 시가 몸을 뒤척입니다.</p>
+    <p class="aside">경북 안동, 백 년 된 고택을 고쳐 지었습니다. 손님은 방이 아니라 시간을 빌립니다. 아침에는 대청의 빛을, 낮에는 마당의 바람을, 밤에는 구들의 온기와 달을.</p>
+  </div>
+</section>
+
+<section class="rooms" id="stay">
+  <div class="wrap">
+    <div class="eyebrow"><span class="bar"></span><span class="mono">02 — 머무름</span></div>
+    <div class="grid">
+      <article class="room">
+        <span class="hanja" aria-hidden="true">大廳</span>
+        <h3><span>DAECHEONG</span>대청 — 낮의 마루</h3>
+        <p>남향으로 트인 여섯 칸 대청. 발 사이로 드는 빛이 하루의 각도를 바꿔 가며 마루에 시간을 새깁니다.</p>
+      </article>
+      <article class="room">
+        <span class="hanja" aria-hidden="true">溫突</span>
+        <h3><span>ONDOL</span>온돌 — 밤의 구들</h3>
+        <p>장작으로 데운 구들장 위, 광목 이불의 무게. 등이 먼저 잠들고 생각이 나중에 잠드는 방입니다.</p>
+      </article>
+      <article class="room">
+        <span class="hanja" aria-hidden="true">茶道</span>
+        <h3><span>DADO</span>다도 — 고요의 한 잔</h3>
+        <p>해 질 무렵 안주인이 우려 내는 발효차 한 상. 찻물 끓는 소리가 마당의 바람 소리와 겹칩니다.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="reserve" id="reserve">
+  <div class="wrap">
+    <div>
+      <h2><span class="dot" aria-hidden="true"></span>달이 뜨는 밤,<br>발을 내리고 머무세요</h2>
+      <p>객실 세 곳, 하루 세 팀. 조용한 머무름을 위해 예약제로만 문을 엽니다.</p>
+    </div>
+    <a class="btn" href="#reserve">예약 문의</a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span class="mono">월하재 月下齋 — 경상북도 안동시 서후면</span>
+    <span class="mono">© 2026 WOLHAJAE. 처마 끝의 시: 윤동주 「서시」 · 김소월 「산유화」</span>
+  </div>
+</footer>
+
+<script>
+(() => {
+"use strict";
+
+/* ── corpus: public-domain Korean poems, read vertically down each strand ── */
+const CORPUS = (
+  "죽는날까지하늘을우러러한점부끄럼이없기를잎새에이는바람에도나는괴로워했다" +
+  "별을노래하는마음으로모든죽어가는것을사랑해야지그리고나한테주어진길을걸어가야겠다" +
+  "오늘밤에도별이바람에스치운다" +
+  "산에는꽃피네꽃이피네갈봄여름없이꽃이피네산에산에피는꽃은저만치혼자서피어있네" +
+  "산에서우는작은새여꽃이좋아산에서사노라네" +
+  "산에는꽃지네꽃이지네갈봄여름없이꽃이지네"
+).replace(/\s/g,"");
+
+const canvas = document.getElementById("blind");
+const ctx = canvas.getContext("2d");
+const hero = document.getElementById("hero");
+const stage = document.querySelector(".stage");
+const roofMount = document.getElementById("roofMount");
+const hint = document.getElementById("hint");
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+let W=0, H=0, DPR=1;
+let particles=[], maxDrop=0;
+let tokens={};
+const spriteCache=new Map();
+let roof={};          // geometry shared by SVG + strands
+let mouse={x:-9e3,y:-9e3,vx:0,vy:0,px:-9e3,py:-9e3};
+let scrollP=0, entry=reduceMotion?1:0, t0=performance.now();
+
+/* ── theme tokens → canvas ── */
+function readTokens(){
+  const s=getComputedStyle(document.documentElement);
+  tokens={
+    glyph:s.getPropertyValue("--glyph").trim(),
+    glyphAlpha:parseFloat(s.getPropertyValue("--glyph-alpha"))||0.88,
+    shadowAlpha:parseFloat(s.getPropertyValue("--shadow-alpha"))||0.09,
+    tile:s.getPropertyValue("--tile").trim(),
+    tileLine:s.getPropertyValue("--tile-line").trim(),
+    red:s.getPropertyValue("--red").trim(),
+    ink:s.getPropertyValue("--ink").trim(),
+  };
+  spriteCache.clear();
+}
+
+/* ── glyph sprites ── */
+let FS=15;
+function sprite(ch){
+  let sp=spriteCache.get(ch);
+  if(sp) return sp;
+  const pad=4, size=(FS+pad*2)*DPR;
+  const c=document.createElement("canvas");
+  c.width=c.height=size;
+  const g=c.getContext("2d");
+  g.scale(DPR,DPR);
+  g.font=`${FS}px "Gowun Batang","Nanum Myeongjo",serif`;
+  g.textAlign="center"; g.textBaseline="middle";
+  g.fillStyle=tokens.glyph;
+  g.fillText(ch,(FS+pad*2)/2,(FS+pad*2)/2+1);
+  spriteCache.set(ch,c);
+  return c;
+}
+
+/* ── roof geometry + SVG ── */
+function eaveY(u){ return roof.eaveBase - roof.lift*Math.pow(Math.abs(u),2.7); }
+
+function buildRoof(){
+  const rw=Math.min(W*0.60, 700);
+  const rh=rw*0.30;
+  roof={
+    w:rw, h:rh,
+    cx:W/2,
+    top:H*0.085,
+    lift:rh*0.36,
+  };
+  roof.eaveBase=roof.top+rh;
+  const L=roof.cx-rw/2, R=roof.cx+rw/2;
+  const ridgeW=rw*0.52, rL=roof.cx-ridgeW/2, rR=roof.cx+ridgeW/2;
+  const ridgeY=roof.top+rh*0.08;
+
+  const pts=[];
+  for(let i=0;i<=40;i++){const u=-1+2*i/40; pts.push(`${(roof.cx+u*rw/2).toFixed(1)},${eaveY(u).toFixed(1)}`);}
+  const eavePath=pts.join(" L");
+
+  // tile fan lines ridge → eave
+  let fan="";
+  const N=26;
+  for(let i=0;i<=N;i++){
+    const v=-1+2*i/N;
+    const x1=roof.cx+v*ridgeW/2, y1=ridgeY+4;
+    const u=v*0.985, x2=roof.cx+u*rw/2, y2=eaveY(u)-1;
+    const mx=(x1+x2)/2, my=(y1+y2)/2+rh*0.045;
+    fan+=`<path d="M${x1},${y1} Q${mx},${my} ${x2},${y2}" stroke="var(--tile-line)" stroke-width="1.6" fill="none"/>`;
+  }
+  // 막새 (round eave-end tiles)
+  let maksae="";
+  const step=rw/Math.floor(rw/17);
+  for(let x=L+step/2;x<R;x+=step){
+    const u=(x-roof.cx)/(rw/2);
+    const y=eaveY(u)+2.5;
+    maksae+=`<circle cx="${x}" cy="${y}" r="3.4" fill="var(--tile)" stroke="var(--tile-line)" stroke-width="1"/>`+
+            `<circle cx="${x}" cy="${y}" r="1.1" fill="var(--red)" opacity=".75"/>`;
+  }
+  const svg=
+`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+  <path d="M${L},${eaveY(-1)} L${eavePath} L${R},${eaveY(1)} L${rR},${ridgeY} L${rL},${ridgeY} Z" fill="var(--tile)"/>
+  ${fan}
+  <path d="M${L},${eaveY(-1)} L${eavePath}" stroke="var(--tile-line)" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <rect x="${rL-10}" y="${ridgeY-9}" width="${ridgeW+20}" height="11" rx="3" fill="var(--tile)" stroke="var(--tile-line)" stroke-width="1.4"/>
+  <circle cx="${rL-10}" cy="${ridgeY-3}" r="5" fill="var(--tile)" stroke="var(--tile-line)" stroke-width="1.4"/>
+  <circle cx="${rR+10}" cy="${ridgeY-3}" r="5" fill="var(--tile)" stroke="var(--tile-line)" stroke-width="1.4"/>
+  ${maksae}
+</svg>`;
+  roofMount.innerHTML=svg;
+}
+
+/* ── strands of hanging glyphs ── */
+function buildStrands(){
+  particles=[]; maxDrop=0;
+  const span=0.94;
+  const spacing=W<720?11:9.5;
+  const count=Math.max(24,Math.floor(roof.w*span/spacing));
+  const lineGap=FS+2.5;
+  let ci=0;
+  for(let s=0;s<=count;s++){
+    const u=-span+2*span*s/count;
+    const ax=roof.cx+u*roof.w/2;
+    const ay=eaveY(u)+12;
+    const center=Math.pow(Math.cos(u*Math.PI/2),1.15);
+    const len=Math.round(13+7*Math.random()+16*center*(0.55+0.45*Math.random()));
+    const phase=Math.random()*Math.PI*2;
+    const swaySeed=0.75+0.5*Math.random();
+    for(let i=0;i<len;i++){
+      const ch=CORPUS[ci++ % CORPUS.length];
+      const drop=(i+1)*lineGap;
+      maxDrop=Math.max(maxDrop,drop);
+      particles.push({
+        ch, ax, ay, drop, phase, swaySeed,
+        x:ax, y:ay+drop, vx:0, vy:0,
+        jx:(Math.random()-0.5)*2.2,
+      });
+    }
+  }
+}
+
+/* ── layout ── */
+function resize(){
+  DPR=Math.min(devicePixelRatio||1,2);
+  W=hero.clientWidth; H=hero.clientHeight;
+  FS=W<720?12.5:15;
+  canvas.width=W*DPR; canvas.height=H*DPR;
+  canvas.style.width=W+"px"; canvas.style.height=H+"px";
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  spriteCache.clear();
+  buildRoof();
+  buildStrands();
+}
+
+/* ── input ── */
+function onMove(x,y){
+  const r=hero.getBoundingClientRect();
+  mouse.x=x-r.left; mouse.y=y-r.top;
+}
+addEventListener("pointermove",e=>onMove(e.clientX,e.clientY),{passive:true});
+addEventListener("touchmove",e=>{const t=e.touches[0]; if(t) onMove(t.clientX,t.clientY);},{passive:true});
+addEventListener("pointerleave",()=>{mouse.x=mouse.y=-9e3;});
+
+function onScroll(){
+  const max=stage.offsetHeight-innerHeight;
+  scrollP=max>0?Math.min(1,Math.max(0,scrollY/max)):0;
+  hint.style.opacity=scrollP>0.04?0:1;
+}
+addEventListener("scroll",onScroll,{passive:true});
+
+/* ── helpers ── */
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const smooth=(a,b,v)=>{const t=clamp((v-a)/(b-a),0,1);return t*t*(3-2*t);};
+
+/* ── main loop ── */
+function frame(now){
+  const t=(now-t0)/1000;
+  if(!reduceMotion) entry=Math.min(1,t/1.9);
+  const entryE=1-Math.pow(1-entry,3);
+
+  // mouse velocity (wind gust)
+  if(mouse.px>-9e3){ mouse.vx=(mouse.x-mouse.px)*0.5+mouse.vx*0.5; mouse.vy=(mouse.y-mouse.py)*0.5+mouse.vy*0.5; }
+  mouse.px=mouse.x; mouse.py=mouse.y;
+
+  const rollP=smooth(0.04,0.72,scrollP);          // 발 걷기
+  const visible=maxDrop*entryE*(1-rollP);
+  const heroFade=1-smooth(0.82,1,scrollP);
+
+  ctx.clearRect(0,0,W,H);
+  if(heroFade<=0){ requestAnimationFrame(frame); return; }
+
+  const R=W<720?95:135, R2=R*R;
+  const windT=t*0.85;
+
+  /* physics + draw: shadow pass then ink pass, cheap single loop with two draws */
+  ctx.globalAlpha=1;
+  for(const p of particles){
+    const dn=p.drop/maxDrop;
+
+    // rolled-up target: gather into a band under the eave
+    const rolled=smooth(visible,visible+38,p.drop);
+    const hy=p.ay+p.drop*(1-rolled)+rolled*(6+(p.drop%14));
+    const sway=reduceMotion?0:
+      (Math.sin(windT+p.phase+dn*2.6)+0.55*Math.sin(windT*1.7+p.phase*1.6))
+      *(0.5+3.4*dn*dn)*p.swaySeed;
+    const hx=p.ax+p.jx+sway;
+
+    // cursor = wind
+    let fx=0,fy=0;
+    const dx=p.x-mouse.x, dy=p.y-mouse.y, d2=dx*dx+dy*dy;
+    if(d2<R2 && rolled<0.7){
+      const d=Math.sqrt(d2)||1, f=(1-d/R);
+      const push=f*f*2.6;
+      fx=(dx/d)*push+mouse.vx*0.10*f;
+      fy=(dy/d)*push*0.45+mouse.vy*0.06*f;
+    }
+
+    p.vx=(p.vx+(hx-p.x)*0.022+fx)*0.90;
+    p.vy=(p.vy+(hy-p.y)*0.030+fy)*0.88;
+    p.x+=p.vx; p.y+=p.vy;
+
+    const alpha=(tokens.glyphAlpha-(0.18*dn))*(1-rolled*0.72)*heroFade;
+    if(alpha<0.02) continue;
+    const sp=sprite(p.ch), sz=sp.width/DPR;
+
+    // cast shadow (skewed right, deeper with drop)
+    ctx.globalAlpha=tokens.shadowAlpha*alpha;
+    ctx.drawImage(sp,p.x-sz/2+10+(p.y-p.ay)*0.16,p.y-sz/2+7,sz,sz);
+    // ink
+    ctx.globalAlpha=alpha;
+    ctx.drawImage(sp,p.x-sz/2,p.y-sz/2,sz,sz);
+  }
+  ctx.globalAlpha=1;
+
+  // hero elements fade/lift on late scroll
+  hero.style.opacity=heroFade<1?String(0.15+0.85*heroFade):"";
+
+  requestAnimationFrame(frame);
+}
+
+/* ── theme change → recolor canvas ── */
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",()=>{readTokens();buildRoof();});
+new MutationObserver(()=>{readTokens();buildRoof();})
+  .observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+
+/* ── boot ── */
+readTokens();
+resize();
+onScroll();
+addEventListener("resize",()=>{readTokens();resize();});
+if(document.fonts&&document.fonts.ready){document.fonts.ready.then(()=>{spriteCache.clear();});}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
